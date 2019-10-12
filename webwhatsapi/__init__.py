@@ -1,6 +1,5 @@
 """
 WebWhatsAPI module
-
 .. moduleauthor:: Mukul Hase <mukulhase@gmail.com>, Adarsh Sanjeev <adarshsanjeev@gmail.com>
 """
 
@@ -105,7 +104,7 @@ class WhatsAPIDriver(object):
         return self.driver.execute_script('return window.localStorage;')
 
     def set_local_storage(self, data):
-        self.driver.execute_script(''.join(["window.localStorage.setItem('{}', '{}');".format(k, v)
+        self.driver.execute_script(''.join(["window.localStorage.setItem('{}', '{}');".format(k, v.replace("\n","\\n") if isinstance(v, str) else v)
                                             for k, v in data.items()]))
 
     def save_firefox_profile(self, remove_old=False):
@@ -150,7 +149,7 @@ class WhatsAPIDriver(object):
         self.driver.close()
 
     def __init__(self, client="firefox", username="API", proxy=None, command_executor=None, loadstyles=False,
-                 profile=None, headless=False, autoconnect=True, logger=None, extra_params=None, chrome_options=None, 
+                 profile=None, headless=False, autoconnect=True, logger=None, extra_params=None, chrome_options=None,
                  executable_path=None):
         """Initialises the webdriver"""
 
@@ -195,12 +194,12 @@ class WhatsAPIDriver(object):
 
             self.logger.info("Starting webdriver")
             if executable_path is not None:
-                executable_path = os.path.abspath(executable_path)                                
+                executable_path = os.path.abspath(executable_path)
 
                 self.logger.info("Starting webdriver")
                 self.driver = webdriver.Firefox(capabilities=capabilities, options=options, executable_path=executable_path,
                                                     **extra_params)
-            else: 
+            else:
                 self.logger.info("Starting webdriver")
                 self.driver = webdriver.Firefox(capabilities=capabilities, options=options,
                                                     **extra_params)
@@ -245,13 +244,13 @@ class WhatsAPIDriver(object):
 
     def connect(self):
         self.driver.get(self._URL)
-        
+
         profilePath = ""
         if self.client == "chrome":
             profilePath = ""
         else:
             profilePath = self._profile.path
-        
+
         local_storage_file = os.path.join(profilePath, self._LOCAL_STORAGE_FILE)
         if os.path.exists(local_storage_file):
             with open(local_storage_file) as f:
@@ -264,7 +263,7 @@ class WhatsAPIDriver(object):
 
         # instead we use this (temporary) solution:
         # return 'class="app _3dqpi two"' in self.driver.page_source
-        return self.wapi_functions.isLoggedIn()
+        return self.driver.execute_script("if (document.querySelector('*[data-icon=chat]') !== null) { return true } else { return false }")
 
     def is_connected(self):
         """Returns if user's phone is connected to the internet."""
@@ -309,7 +308,6 @@ class WhatsAPIDriver(object):
         Fetches list of all contacts
         This will return chats with people from the address book only
         Use get_all_chats for all chats
-
         :return: List of contacts
         :rtype: list[Contact]
         """
@@ -319,7 +317,6 @@ class WhatsAPIDriver(object):
     def get_my_contacts(self):
         """
         Fetches list of added contacts
-
         :return: List of contacts
         :rtype: list[Contact]
         """
@@ -329,7 +326,6 @@ class WhatsAPIDriver(object):
     def get_all_chats(self):
         """
         Fetches all chats
-
         :return: List of chats
         :rtype: list[Chat]
         """
@@ -342,7 +338,6 @@ class WhatsAPIDriver(object):
     def get_all_chat_ids(self):
         """
         Fetches all chat ids
-
         :return: List of chat ids
         :rtype: list[str]
         """
@@ -365,7 +360,7 @@ class WhatsAPIDriver(object):
         unread_messages = []
         for raw_message_group in raw_message_groups:
             chat = factory_chat(raw_message_group, self)
-            messages = [factory_message(message, self) for message in raw_message_group['messages']]
+            messages = list(filter(None.__ne__,[factory_message(message, self) for message in raw_message_group['messages']]))
             messages.sort(key=lambda message: message.timestamp)
             unread_messages.append(MessageGroup(chat, messages))
 
@@ -377,7 +372,6 @@ class WhatsAPIDriver(object):
                                     include_notifications=False):
         """
         I fetch unread messages from an asked chat.
-
         :param id: chat id
         :type  id: str
         :param include_me: if user's messages are to be included
@@ -405,7 +399,6 @@ class WhatsAPIDriver(object):
     def get_all_messages_in_chat(self, chat, include_me=False, include_notifications=False):
         """
         Fetches messages in chat
-
         :param include_me: Include user's messages
         :type include_me: bool or None
         :param include_notifications: Include events happening on chat
@@ -422,7 +415,6 @@ class WhatsAPIDriver(object):
     def get_all_message_ids_in_chat(self, chat, include_me=False, include_notifications=False):
         """
         Fetches message ids in chat
-
         :param include_me: Include user's messages
         :type include_me: bool or None
         :param include_notifications: Include events happening on chat
@@ -435,7 +427,6 @@ class WhatsAPIDriver(object):
     def get_message_by_id(self, message_id):
         """
         Fetch a message
-
         :param message_id: Message ID
         :type message_id: str
         :return: Message or False
@@ -451,7 +442,6 @@ class WhatsAPIDriver(object):
     def get_contact_from_id(self, contact_id):
         """
         Fetches a contact given its ID
-
         :param contact_id: Contact ID
         :type contact_id: str
         :return: Contact or Error
@@ -467,7 +457,6 @@ class WhatsAPIDriver(object):
     def get_chat_from_id(self, chat_id):
         """
         Fetches a chat given its ID
-
         :param chat_id: Chat ID
         :type chat_id: str
         :return: Chat or Error
@@ -487,7 +476,6 @@ class WhatsAPIDriver(object):
         +972-51-234-5678
         This function would receive:
         972512345678
-
         :param number: Phone number
         :return: Chat
         :rtype: Chat
@@ -512,7 +500,6 @@ class WhatsAPIDriver(object):
     def get_status(self):
         """
         Returns status of the driver
-
         :return: Status
         :rtype: WhatsAPIDriverStatus
         """
@@ -535,7 +522,6 @@ class WhatsAPIDriver(object):
     def contact_get_common_groups(self, contact_id):
         """
         Returns groups common between a user and the contact with given id.
-
         :return: Contact or Error
         :rtype: Contact
         """
@@ -559,14 +545,13 @@ class WhatsAPIDriver(object):
     def send_message_to_id(self, recipient, message):
         """
         Send a message to a chat given its ID
-
         :param recipient: Chat ID
         :type recipient: str
         :param message: Plain-text message to be sent.
         :type message: str
         """
         return self.wapi_functions.sendMessageToID(recipient, message)
-    
+
     def convert_to_base64(self, path):
         """
         :param path: file path
@@ -580,8 +565,8 @@ class WhatsAPIDriver(object):
             archive = b64encode(image_file.read())
             archive = archive.decode('utf-8')
         return 'data:' + content_type + ';base64,' + archive
-    
-    
+
+
     def send_media(self, path, chatid, caption):
         """
             converts the file to base64 and sends it using the sendImage function of wapi.js
@@ -593,13 +578,12 @@ class WhatsAPIDriver(object):
         imgBase64 = self.convert_to_base64(path)
         filename = os.path.split(path)[-1]
         return self.wapi_functions.sendImage(imgBase64, chatid, filename, caption)
-    
-    
+
+
 
     def chat_send_seen(self, chat_id):
         """
         Send a seen to a chat given its ID
-
         :param chat_id: Chat ID
         :type chat_id: str
         """
@@ -640,7 +624,6 @@ class WhatsAPIDriver(object):
         Get full profile pic from an id
         The ID must be on your contact book to
         successfully get their profile picture.
-
         :param id: ID
         :type id: str
         """
@@ -655,7 +638,6 @@ class WhatsAPIDriver(object):
         Get small profile pic from an id
         The ID must be on your contact book to
         successfully get their profile picture.
-
         :param id: ID
         :type id: str
         """
@@ -701,14 +683,12 @@ class WhatsAPIDriver(object):
     def mark_default_unread_messages(self):
         """
         Look for the latest unreplied messages received and mark them as unread.
-
         """
         self.wapi_functions.markDefaultUnreadMessages()
 
     def get_battery_level(self):
         """
         Check the battery level of device
-
         :return: int: Battery level
         """
         return self.wapi_functions.getBatteryLevel()
@@ -716,7 +696,6 @@ class WhatsAPIDriver(object):
     def leave_group(self, chat_id):
         """
         Leave a group
-
         :param chat_id: id of group
         :return:
         """
@@ -725,16 +704,14 @@ class WhatsAPIDriver(object):
     def delete_chat(self, chat_id):
         """
         Delete a chat
-
         :param chat_id: id of chat
         :return:
         """
         return self.wapi_functions.deleteConversation(chat_id)
-    
+
     def delete_message(self, chat_id, message_array, revoke=False):
         """
         Delete a chat
-
         :param chat_id: id of chat
         :param message_array: one or more message(s) id
         :param revoke: Set to true so the message will be deleted for everyone, not only you
@@ -745,7 +722,6 @@ class WhatsAPIDriver(object):
     def check_number_status(self, number_id):
         """
         Check if a number is valid/registered in the whatsapp service
-
         :param number_id: number id
         :return:
         """
