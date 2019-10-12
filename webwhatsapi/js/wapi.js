@@ -489,7 +489,7 @@ window.WAPI.areAllMessagesLoaded = function (id, done) {
 window.WAPI.loadEarlierMessagesTillDate = function (id, lastMessage, done) {
     const found = WAPI.getChat(id);
     x = function () {
-        if (found.msgs.models[0].t > lastMessage) {
+        if (found.msgs.models[0].t > lastMessage && !found.msgs.msgLoadState.noEarlierMsgs) {
             found.loadEarlierMsgs().then(x);
         } else {
             done();
@@ -826,12 +826,12 @@ window.WAPI.sendSeen = function (id, done) {
     var chat = window.WAPI.getChat(id);
     if (chat !== undefined) {
         if (done !== undefined) {
-            Store.SendSeen(Store.Chat.models[0], false).then(function () {
+            Store.SendSeen(chat, false).then(function () {
                 done(true);
             });
             return true;
         } else {
-            Store.SendSeen(Store.Chat.models[0], false);
+            Store.SendSeen(chat, false);
             return true;
         }
     }
@@ -1082,9 +1082,9 @@ window.WAPI.deleteMessage = function (chatId, messageArray, revoke=false, done) 
     }
 
     if (revoke) {
-        conversation.sendRevokeMsgs(messageArray, conversation);    
+        conversation.sendRevokeMsgs(messageArray, conversation);
     } else {
-        conversation.sendDeleteMsgs(messageArray, conversation);    
+        conversation.sendDeleteMsgs(messageArray, conversation);
     }
 
 
@@ -1316,7 +1316,7 @@ window.WAPI.sendVCard = function (chatId, vcard) {
     chat.addAndSendMsg(tempMsg);
 };
 /**
- * Block contact 
+ * Block contact
  * @param {string} id '000000000000@c.us'
  * @param {*} done - function - Callback function to be called when a new message arrives.
  */
@@ -1331,7 +1331,7 @@ window.WAPI.contactBlock = function (id, done) {
     return false;
 }
 /**
- * unBlock contact 
+ * unBlock contact
  * @param {string} id '000000000000@c.us'
  * @param {*} done - function - Callback function to be called when a new message arrives.
  */
