@@ -396,7 +396,7 @@ class WhatsAPIDriver(object):
 
     # get_unread_messages_in_chat()
 
-    def get_all_messages_in_chat(self, chat, include_me=False, include_notifications=False):
+    def get_all_messages_in_chat(self, chat, include_me=True, include_notifications=False):
         """
         Fetches messages in chat
         :param include_me: Include user's messages

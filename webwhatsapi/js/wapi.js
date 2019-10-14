@@ -1,46 +1,58 @@
+/* This script was taken from: https://github.com/mukulhase/WebWhatsapp-Wrapper/blob/master/webwhatsapi/js/wapi.js */
 /**
  * This script contains WAPI functions that need to be run in the context of the webpage
  */
+
+
+window.WAPI = {
+    lastRead: {}
+};
 
 /**
  * Auto discovery the webpack object references of instances that contains all functions used by the WAPI
  * functions and creates the Store object.
  */
-if (!window.Store) {
+let moduleId = 1;
+window.WAPI.autoDiscoverModules = function() {
     (function () {
         function getStore(modules) {
             let foundCount = 0;
             let neededObjects = [
-                { id: "Store", conditions: (module) => (module.Chat && module.Msg) ? module : null },
-                { id: "MediaCollection", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.processFiles !== undefined) ? module.default : null },
-                { id: "ChatClass", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.Collection !== undefined && module.default.prototype.Collection === "Chat") ? module : null },
-                { id: "MediaProcess", conditions: (module) => (module.BLOB) ? module : null },
-                { id: "Wap", conditions: (module) => (module.createGroup) ? module : null },
-                { id: "ServiceWorker", conditions: (module) => (module.default && module.default.killServiceWorker) ? module : null },
-                { id: "State", conditions: (module) => (module.STATE && module.STREAM) ? module : null },
-                { id: "WapDelete", conditions: (module) => (module.sendConversationDelete && module.sendConversationDelete.length == 2) ? module : null },
-                { id: "Conn", conditions: (module) => (module.default && module.default.ref && module.default.refTTL) ? module.default : null },
-                { id: "WapQuery", conditions: (module) => (module.queryExist) ? module : ((module.default && module.default.queryExist) ? module.default : null) },
-                { id: "CryptoLib", conditions: (module) => (module.decryptE2EMedia) ? module : null },
-                { id: "OpenChat", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.openChat) ? module.default : null },
-                { id: "UserConstructor", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.isServer && module.default.prototype.isUser) ? module.default : null },
-                { id: "SendTextMsgToChat", conditions: (module) => (module.sendTextMsgToChat) ? module.sendTextMsgToChat : null },
-                { id: "SendSeen", conditions: (module) => (module.sendSeen) ? module.sendSeen : null },
-                { id: "sendDelete", conditions: (module) => (module.sendDelete) ? module.sendDelete : null }
+                { id: "Store", conditions: (mod) => (mod.Chat && mod.Msg) ? mod : null },
+                { id: "MediaCollection", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.processFiles !== undefined) ? mod.default : null },
+                { id: "ChatClass", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.Collection !== undefined && mod.default.prototype.Collection === "Chat") ? mod : null },
+                { id: "MediaProcess", conditions: (mod) => (mod.BLOB) ? mod : null },
+                { id: "Wap", conditions: (mod) => (mod.createGroup) ? mod : null },
+                { id: "ServiceWorker", conditions: (mod) => (mod.default && mod.default.killServiceWorker) ? mod : null },
+                { id: "State", conditions: (mod) => (mod.STATE && mod.STREAM) ? mod : null },
+                { id: "WapDelete", conditions: (mod) => (mod.sendConversationDelete && mod.sendConversationDelete.length == 2) ? mod : null },
+                { id: "Conn", conditions: (mod) => (mod.default && mod.default.ref && mod.default.refTTL) ? mod.default : null },
+                { id: "WapQuery", conditions: (mod) => (mod.queryExist) ? mod : ((mod.default && mod.default.queryExist) ? mod.default : null) },
+                { id: "CryptoLib", conditions: (mod) => (mod.decryptE2EMedia) ? mod : null },
+                { id: "OpenChat", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.openChat) ? mod.default : null },
+                { id: "UserConstructor", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.isServer && mod.default.prototype.isUser) ? mod.default : null },
+                { id: "SendTextMsgToChat", conditions: (mod) => (mod.sendTextMsgToChat) ? mod.sendTextMsgToChat : null },
+                { id: "SendSeen", conditions: (mod) => (mod.sendSeen) ? mod.sendSeen : null },
+                { id: "sendDelete", conditions: (mod) => (mod.sendDelete) ? mod.sendDelete : null },
+                { id: "UiController", conditions: (mod) => (mod.default && mod.default.focusNextChat) ? mod.default : null },
+                { id: "RawMedia", conditions: (mod) => (mod.prepRawMedia) ? mod : null },
+                { id: "DataFactory", conditions: (mod) => (mod.default && mod.default.createFromData) ? mod.default : null },
+                { id: "Sticker", conditions: (mod) => (mod.default && mod.default.Sticker) ? mod.default : null },
+                { id: "MediaUpload", conditions: (mod) => (mod.default && mod.default.mediaUpload) ? mod.default : null },
             ];
             for (let idx in modules) {
                 if ((typeof modules[idx] === "object") && (modules[idx] !== null)) {
                     let first = Object.values(modules[idx])[0];
                     if ((typeof first === "object") && (first.exports)) {
                         for (let idx2 in modules[idx]) {
-                            let module = modules(idx2);
-                            if (!module) {
+                            let mod = modules(idx2);
+                            if (!mod) {
                                 continue;
                             }
                             neededObjects.forEach((needObj) => {
                                 if (!needObj.conditions || needObj.foundedModule)
                                     return;
-                                let neededModule = needObj.conditions(module);
+                                let neededModule = needObj.conditions(mod);
                                 if (neededModule !== null) {
                                     foundCount++;
                                     needObj.foundedModule = neededModule;
@@ -51,10 +63,10 @@ if (!window.Store) {
                             }
                         }
 
-                        let neededStore = neededObjects.find((needObj) => needObj.id === "Store");
-                        window.Store = neededStore.foundedModule ? neededStore.foundedModule : {};
+                        let neededStore = neededObjects.find(needObj => needObj.id === "Store");
+                        window.Store = neededStore.foundedModule || {};
                         neededObjects.splice(neededObjects.indexOf(neededStore), 1);
-                        neededObjects.forEach((needObj) => {
+                        neededObjects.forEach(needObj => {
                             if (needObj.foundedModule) {
                                 window.Store[needObj.id] = needObj.foundedModule;
                             }
@@ -68,13 +80,19 @@ if (!window.Store) {
             }
         }
 
-        webpackJsonp([], { 'parasite': (x, y, z) => getStore(z) }, ['parasite']);
-    })();
-}
+        let mod = {};
+        let exportName = `parasite${moduleId++}`;
+        mod[exportName] = (x, y, z) => getStore(z);
 
-window.WAPI = {
-    lastRead: {}
+        webpackJsonp([], mod, [exportName]);
+    })();
 };
+
+window.WAPI.autoDiscoverModules();
+
+window.WAPI.isReady = function() {
+    return !!window.Store && !!window.Store.Msg;
+}
 
 window.WAPI._serializeRawObj = (obj) => {
     if (obj) {
@@ -144,7 +162,7 @@ window.WAPI._serializeMessageObj = (obj) => {
         type          : obj.type,
         chat          : WAPI._serializeChatObj(obj['chat']),
         chatId        : obj.id.remote,
-        quotedMsgObj  : WAPI._serializeMessageObj(obj['_quotedMsgObj']),
+        quotedMsgObj  : WAPI._serializeMessageObj(obj.quotedMsgObj()),
         mediaData     : window.WAPI._serializeRawObj(obj['mediaData'])
     });
 };
@@ -489,7 +507,7 @@ window.WAPI.areAllMessagesLoaded = function (id, done) {
 window.WAPI.loadEarlierMessagesTillDate = function (id, lastMessage, done) {
     const found = WAPI.getChat(id);
     x = function () {
-        if (found.msgs.models[0].t > lastMessage && !found.msgs.msgLoadState.noEarlierMsgs) {
+        if (found.msgs.models[0].t > lastMessage) {
             found.loadEarlierMsgs().then(x);
         } else {
             done();
@@ -826,12 +844,12 @@ window.WAPI.sendSeen = function (id, done) {
     var chat = window.WAPI.getChat(id);
     if (chat !== undefined) {
         if (done !== undefined) {
-            Store.SendSeen(chat, false).then(function () {
+            Store.SendSeen(Store.Chat.models[0], false).then(function () {
                 done(true);
             });
             return true;
         } else {
-            Store.SendSeen(chat, false);
+            Store.SendSeen(Store.Chat.models[0], false);
             return true;
         }
     }
@@ -1005,7 +1023,6 @@ window.WAPI.downloadFileWithCredentials = function (url, done) {
 window.WAPI.downloadFile = function (url, done) {
     let xhr = new XMLHttpRequest();
 
-
     xhr.onload = function () {
         if (xhr.readyState == 4) {
             if (xhr.status == 200) {
@@ -1027,6 +1044,87 @@ window.WAPI.downloadFile = function (url, done) {
     xhr.responseType = 'blob';
     xhr.send(null);
 };
+
+window.WAPI.downloadFileBuffer = function (url, done) {
+    let xhr = new XMLHttpRequest();
+
+    xhr.onload = function () {
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+                done(xhr.response);
+            } else {
+                console.error(xhr.statusText);
+            }
+        } else {
+            console.log(err);
+            done(false);
+        }
+    };
+
+    xhr.open("GET", url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.send(null);
+};
+
+window.WAPI.downloadFileAndDecrypt = function ({ url, type, mediaKey, mimetype }, callbackFunction) {
+    window.WAPI.downloadFileBuffer(url, async function(result) {
+        let a = await Store.CryptoLib.decryptE2EMedia(type || "image", result, mediaKey, mimetype);
+        const reader = new FileReader();
+
+        reader.addEventListener('loadend', (e) => {
+            callbackFunction(e.target);
+        });
+
+        reader.readAsDataURL(a._blob);
+    });
+}
+
+function uploadEncryptedMediaFile({ url, hash, data }) {
+    return new Promise((resolve, reject) => {
+        let xhr = new XMLHttpRequest();
+
+        xhr.onload = function () {
+            if (xhr.readyState == 4) {
+                if (xhr.status == 200) {
+                    resolve(JSON.parse(xhr.responseText));
+                } else {
+                    reject(xhr.statusText);
+                }
+            } else {
+                reject(err);
+            }
+        };
+
+        let formData = new FormData();
+        formData.append('hash', hash);
+        formData.append('file', data , 'blob');
+
+        xhr.open("POST", url + '?f=j', true);
+        xhr.send(formData);
+    });
+}
+
+window.WAPI.fileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+});
+
+window.WAPI.encryptAndUploadFile = async function ({ type, data }) {
+    let filehash = await window.getFileHash(data);
+    let mediaKey = await window.generateMediaKey();
+    let encrypted = await Store.CryptoLib.encryptE2EMedia(type, {
+        _blob: data,
+        retain: function() {},
+        autorelease: function() {}
+    }, mediaKey);
+    let uploadUrl = await Store.MediaUpload.requestEncryptedMediaUpload(type, encrypted.hash);
+    let uploadResponse = await uploadEncryptedMediaFile({url: uploadUrl.data, hash: encrypted.hash, data: encrypted.ciphertext._blob});
+    return {
+        clientUrl: uploadResponse.url, mediaKey, filehash, uploadhash: encrypted.hash
+    };
+}
 
 window.WAPI.getBatteryLevel = function (done) {
     if (window.Store.Conn.plugged) {
@@ -1116,51 +1214,54 @@ window.WAPI.checkNumberStatus = function (id, done) {
 /**
  * New messages observable functions.
  */
-window.WAPI._newMessagesQueue     = [];
-window.WAPI._newMessagesBuffer    = (sessionStorage.getItem('saved_msgs') != null) ? JSON.parse(sessionStorage.getItem('saved_msgs')) : [];
-window.WAPI._newMessagesDebouncer = null;
-window.WAPI._newMessagesCallbacks = [];
 
-window.Store.Msg.off('add');
-sessionStorage.removeItem('saved_msgs');
+window.WAPI.startListening = () => {
+    window.WAPI._newMessagesQueue     = [];
+    window.WAPI._newMessagesBuffer    = (sessionStorage.getItem('saved_msgs') != null) ? JSON.parse(sessionStorage.getItem('saved_msgs')) : [];
+    window.WAPI._newMessagesDebouncer = null;
+    window.WAPI._newMessagesCallbacks = [];
 
-window.WAPI._newMessagesListener = window.Store.Msg.on('add', (newMessage) => {
-    if (newMessage && newMessage.isNewMsg && !newMessage.isSentByMe) {
-        let message = window.WAPI.processMessageObj(newMessage, false, false);
-        if (message) {
-            window.WAPI._newMessagesQueue.push(message);
-            window.WAPI._newMessagesBuffer.push(message);
+    window.Store.Msg.off('add');
+    sessionStorage.removeItem('saved_msgs');
+
+    window.WAPI._newMessagesListener = window.Store.Msg.on('add', (newMessage) => {
+        if (newMessage && newMessage.isNewMsg /*&& !newMessage.isSentByMe*/) {  //Edit by gfaraj: We want the bot respond to our messages too.
+            let message = window.WAPI.processMessageObj(newMessage, true, false);
+            if (message) {
+                window.WAPI._newMessagesQueue.push(message);
+                window.WAPI._newMessagesBuffer.push(message);
+            }
+
+            // Starts debouncer time to don't call a callback for each message if more than one message arrives
+            // in the same second
+            if (!window.WAPI._newMessagesDebouncer && window.WAPI._newMessagesQueue.length > 0) {
+                window.WAPI._newMessagesDebouncer = setTimeout(() => {
+                    let queuedMessages = window.WAPI._newMessagesQueue;
+
+                    window.WAPI._newMessagesDebouncer = null;
+                    window.WAPI._newMessagesQueue     = [];
+
+                    let removeCallbacks = [];
+
+                    window.WAPI._newMessagesCallbacks.forEach(function (callbackObj) {
+                        if (callbackObj.callback !== undefined) {
+                            callbackObj.callback(queuedMessages);
+                        }
+                        if (callbackObj.rmAfterUse === true) {
+                            removeCallbacks.push(callbackObj);
+                        }
+                    });
+
+                    // Remove removable callbacks.
+                    removeCallbacks.forEach(function (rmCallbackObj) {
+                        let callbackIndex = window.WAPI._newMessagesCallbacks.indexOf(rmCallbackObj);
+                        window.WAPI._newMessagesCallbacks.splice(callbackIndex, 1);
+                    });
+                }, 1000);
+            }
         }
-
-        // Starts debouncer time to don't call a callback for each message if more than one message arrives
-        // in the same second
-        if (!window.WAPI._newMessagesDebouncer && window.WAPI._newMessagesQueue.length > 0) {
-            window.WAPI._newMessagesDebouncer = setTimeout(() => {
-                let queuedMessages = window.WAPI._newMessagesQueue;
-
-                window.WAPI._newMessagesDebouncer = null;
-                window.WAPI._newMessagesQueue     = [];
-
-                let removeCallbacks = [];
-
-                window.WAPI._newMessagesCallbacks.forEach(function (callbackObj) {
-                    if (callbackObj.callback !== undefined) {
-                        callbackObj.callback(queuedMessages);
-                    }
-                    if (callbackObj.rmAfterUse === true) {
-                        removeCallbacks.push(callbackObj);
-                    }
-                });
-
-                // Remove removable callbacks.
-                removeCallbacks.forEach(function (rmCallbackObj) {
-                    let callbackIndex = window.WAPI._newMessagesCallbacks.indexOf(rmCallbackObj);
-                    window.WAPI._newMessagesCallbacks.splice(callbackIndex, 1);
-                });
-            }, 1000);
-        }
-    }
-});
+    });
+};
 
 window.WAPI._unloadInform = (event) => {
     // Save in the buffer the ungot unreaded messages
@@ -1208,18 +1309,73 @@ window.WAPI.getBufferedNewMessages = function (done) {
 /** End new messages observable functions **/
 
 window.WAPI.sendImage = function (imgBase64, chatid, filename, caption, done) {
-//var idUser = new window.Store.UserConstructor(chatid);
-var idUser = new window.Store.UserConstructor(chatid, { intentionallyUsePrivateConstructor: true });
-// create new chat
-return Store.Chat.find(idUser).then((chat) => {
-    var mediaBlob = window.WAPI.base64ImageToFile(imgBase64, filename);
-    var mc = new Store.MediaCollection();
-    mc.processFiles([mediaBlob], chat, 1).then(() => {
-        var media = mc.models[0];
-        media.sendToChat(chat, { caption: caption });
+    //var idUser = new window.Store.UserConstructor(chatid);
+    var idUser = new window.Store.UserConstructor(chatid, { intentionallyUsePrivateConstructor: true });
+    // create new chat
+    return Store.Chat.find(idUser).then((chat) => {
+        var mediaBlob = window.WAPI.base64ImageToFile(imgBase64, filename);
+        var mc = new Store.MediaCollection();
+        mc.processFiles([mediaBlob], chat, 1).then(() => {
+            var media = mc.models[0];
+            media.sendToChat(chat, { caption: caption });
+            if (done !== undefined) done(true);
+        });
+    });
+}
+
+window.WAPI.sendImage2 = function ({imgBase64, chatid, filename, caption, quotedMsgId}, done) {
+    var idUser = new window.Store.UserConstructor(chatid, { intentionallyUsePrivateConstructor: true });
+    return Store.Chat.find(idUser).then((chat) => {
+        var mediaBlob = window.WAPI.base64ImageToFile(imgBase64, filename);
+        var mc = new Store.MediaCollection();
+        mc.processFiles([mediaBlob], chat, 1).then(() => {
+            var media = mc.models[0];
+            var extraData = {};
+            if (caption) {
+                extraData.caption = caption;
+            }
+            if (quotedMsgId) {
+                extraData.quotedMsg = window.Store.Msg.get(quotedMsgId);
+            }
+            media.sendToChat(chat, extraData);
+            if (done !== undefined) done(true);
+        });
+    });
+}
+
+window.WAPI.sendSticker = function ({sticker, chatid, quotedMsgId}, done) {
+    var idUser = new window.Store.UserConstructor(chatid, { intentionallyUsePrivateConstructor: true });
+    // create new chat
+    return Store.Chat.find(idUser).then(async (chat) => {
+        // Since Whatsapp Web doesn't really support sending custom stickers, we have to trick it by using one
+        // of the built-in sticker objects and changing some of the properties before we send it.
+        let prIdx = Store.StickerPack.pageWithIndex(0);
+        await Store.StickerPack.fetchAt(0);
+        if (Store.StickerPack._models.length == 0) {
+            console.log('Could not fetch any sticker packs.');
+            if (done !== undefined) done(false);
+            return;
+        }
+        await Store.StickerPack._pageFetchPromises[prIdx];
+        await Store.StickerPack._models[0].stickers.fetch();
+        if (Store.StickerPack._models[0].stickers._models.length == 0) {
+            console.log('Could not fetch any stickers in the first pack.');
+            if (done !== undefined) done(false);
+            return;
+        }
+        let stick = Store.StickerPack._models[0].stickers._models[0];
+        stick.__x_clientUrl = sticker.url;
+        stick.__x_filehash = sticker.filehash;
+        stick.__x_id = sticker.filehash;
+        stick.__x_uploadhash = sticker.uploadhash;
+        stick.__x_mediaKey = sticker.mediaKey;
+        stick.__x_initialized = false;
+        stick.__x_mediaData.mediaStage = "INIT";
+        stick.__x__mediaObject = undefined;
+        await stick.initialize();
+        await stick.sendToChat(chat);
         if (done !== undefined) done(true);
     });
-});
 }
 
 window.WAPI.base64ImageToFile = function (b64Data, filename) {

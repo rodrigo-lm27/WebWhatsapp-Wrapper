@@ -14,3 +14,8 @@ docs/_build
 .coverage
 .eggs
 *.sublime-*
+sample/flask/chromedriver.exe
+sample/flask/log.txt
+sample/flask/static/222/129704240.ogg
+sample/flask/static/222/142995440.jpe
+sample/flask/static/222/143077040

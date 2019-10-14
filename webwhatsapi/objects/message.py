@@ -60,7 +60,7 @@ class Message(WhatsappObject):
         self.timestamp = datetime.fromtimestamp(js_obj["timestamp"])
         self.chat_id = js_obj['chatId']
 
-        if js_obj["content"]:
+        if "content" in js_obj:
             self.content = js_obj["content"]
             self.safe_content = safe_str(self.content[0:25]) + '...'
         elif self.type == 'revoked':
@@ -80,13 +80,15 @@ class MediaMessage(Message):
                   'image'   : '576861747341707020496d616765204b657973',
                   'video'   : '576861747341707020566964656f204b657973',
                   'ptt'     : '576861747341707020417564696f204b657973',
-                  'audio'   : '576861747341707020417564696f204b657973'}
+                  'audio'   : '576861747341707020417564696f204b657973',
+                  'sticker' : '576861747341707020446f63756d656e74204b657973'}
 
     def __init__(self, js_obj, driver=None):
         super(MediaMessage, self).__init__(js_obj, driver)
-
-        self.size = self._js_obj["size"]
-        self.mime = self._js_obj["mimetype"]
+        if "size" in self._js_obj:
+            self.size = self._js_obj["size"]
+        if "mimetype" in self._js_obj:
+            self.mime = self._js_obj["mimetype"]
         if "caption" in self._js_obj:
             self.caption = self._js_obj["caption"] or ""
 

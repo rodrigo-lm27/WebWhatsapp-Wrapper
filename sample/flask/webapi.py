@@ -301,6 +301,7 @@ def get_client_info(client_id):
         is_logged_in = True
     
     return {
+        "client": client_id,
         "is_alive": is_alive,
         "is_logged_in": is_logged_in,
         "is_timer": bool(timers[client_id]) and timers[client_id].is_running
@@ -320,7 +321,7 @@ def allowed_file(filename):
 def send_media(chat_id, requestObj):
     files = requestObj.files
     if not files:
-        return jsonify({'Status': False})
+        return jsonify({'Status': 'File not found!'})
 
     # create user folder if not exists
     profile_path = create_static_profile_path(g.client_id)
@@ -329,10 +330,10 @@ def send_media(chat_id, requestObj):
     for file in files:
         file = files.get(file)
         if file.filename == '':
-            return {'Status': False}
+            return {'Status': 'File empty name'}
 
         if not file or not allowed_file(file.filename):
-            return {'Status': False}
+            return {'Status': 'File not allowed'}
 
         filename = secure_filename(file.filename)
 
@@ -468,6 +469,15 @@ def on_bad_internal_server_error(e):
 '''
 
 # ---------------------------- Client -----------------------------------------
+@app.route('/client', methods=['GET'])
+def status_client():
+    """Create a new client driver. The driver is automatically created in
+    before_request function."""
+    result = False
+    if g.client_id in drivers:
+        result = True
+    return jsonify({'Success': result})
+
 
 @app.route('/client', methods=['PUT'])
 def create_client():
@@ -617,7 +627,10 @@ def get_active_clients():
     if not drivers:
         return jsonify([])
 
-    result = {client: get_client_info(client) for client in drivers}
+    result = []
+    #result = {client: get_client_info(client) for client in drivers}
+    for client in drivers:
+        result.append(get_client_info(client))
     return jsonify(result)
 
 
