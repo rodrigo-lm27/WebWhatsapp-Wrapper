@@ -40,6 +40,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 sys.path.insert(0, BASE_DIR)
 
 from flask import Flask, send_file, request, abort, g, jsonify
+from datetime import datetime
 from flask.json import JSONEncoder
 from functools import wraps
 from logging.handlers import TimedRotatingFileHandler
@@ -261,15 +262,20 @@ def check_new_messages(client_id):
 
     try:
         # Get all unread messages
-        res = drivers[client_id].get_unread()
+        res = drivers[client_id].get_unread(False,False,True)
         # Mark all of them as seen
-        for message_group in res:
-            message_group.chat.send_seen()
+        # for message_group in res:
+            # message_group.chat.send_seen()
         # Release thread lock
         release_semaphore(client_id)
         # If we have new messages, do something with it
         if res:
             print(res)
+            for message_group in res:
+                #listMsgs = message_group.chat.get_messages()
+                for Message in message_group.chat:
+                    print(Message)
+
     except:
         pass
     finally:
@@ -506,21 +512,34 @@ def get_screen():
     screen"""
     img_title = 'screen_' + g.client_id + '.png'
     image_path = STATIC_FILES_PATH + img_title
-    if g.driver_status != WhatsAPIDriverStatus.LoggedIn:
-        try:
-            g.driver.get_qr(image_path)
-            return send_file(image_path, mimetype='image/png')
-        except Exception as err:
-            pass
-    g.driver.screenshot(image_path)
-    return send_file(image_path, mimetype='image/png')
+
+    if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        g.driver.get_qr(image_path)
+        return send_file(image_path, mimetype='image/png')
+    else:
+        abort(jsonify({"Error": "Client already loggedIn"}))
 
 
 @app.route('/screen/qr', methods=['GET'])
 def get_qr():
     """Get qr as a json string"""
-    qr = g.driver.get_qr_plain()
-    return jsonify({'qr': qr})
+    if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        qr = g.driver.get_qr_plain()
+        return jsonify({'qr': qr})
+    else:
+        abort(jsonify({"Error": "Client already loggedIn"}))
+
+
+@app.route('/screen/b64', methods=['GET'])
+def get_qr_b64():
+    """Get qr as a json string"""
+    if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        qr = g.driver.get_qr_base64()
+        return jsonify({'qr': qr})
+    else:
+        abort(jsonify({"Error": "Client already loggedIn"}))
+
+
 
 
 @app.route('/messages/unread', methods=['GET'])
@@ -652,10 +671,10 @@ def run_clients():
     return jsonify(result)
 
 
-@app.route('/admin/clients', methods=['DELETE'])
-def kill_clients():
+@app.route('/admin/<client_id>/clients', methods=['DELETE'])
+def kill_clients(client_id):
     """Force kill driver and other objects for a perticular clien"""
-    clients = request.form.get('clients').split(',')
+    clients = client_id
     kill_dead = request.args.get('kill_dead', default=False)
     kill_dead = kill_dead and kill_dead in ['true', '1']
 
