@@ -207,6 +207,7 @@ def init_client(client_id):
     @return whebwhatsapi object
     """
     if client_id not in drivers:
+        print("iniciando cliente para "+str(client_id))
         drivers[client_id] = init_driver(client_id)
     return drivers[client_id]
 
@@ -238,11 +239,12 @@ def init_timer(client_id):
     @param client_id: ID of clinet user
     """
     if client_id in timers and timers[client_id]:
+        print("iniciando timers para: " + str(client_id))
         timers[client_id].start()
         return
     # Create a timer to call check_new_message function after every 2 seconds.
     # client_id param is needed to be passed to check_new_message
-    timers[client_id] = RepeatedTimer(2, check_new_messages, client_id)
+    timers[client_id] = RepeatedTimer(5, check_new_messages, client_id)
 
 
 def check_new_messages(client_id):
@@ -250,6 +252,7 @@ def check_new_messages(client_id):
 
     @param client_id: ID of client user
     """
+    print("verificand novas mensagens para: " + str(client_id))
     # Return if driver is not defined or if whatsapp is not logged in.
     # Stop the timer as well
     if client_id not in drivers or not drivers[client_id] or not drivers[client_id].is_logged_in():
@@ -261,23 +264,23 @@ def check_new_messages(client_id):
         return
 
     try:
+
         # Get all unread messages
-        res = drivers[client_id].get_unread(False,False,True)
+        res = drivers[client_id].get_unread()
         # Mark all of them as seen
-        # for message_group in res:
-            # message_group.chat.send_seen()
+        for message_group in res:
+            message_group.chat.send_seen()
         # Release thread lock
         release_semaphore(client_id)
         # If we have new messages, do something with it
         if res:
             print(res)
             for message_group in res:
-                #listMsgs = message_group.chat.get_messages()
-                for Message in message_group.chat:
-                    print(Message)
-
-    except:
-        pass
+                if "5521996063947@c.us" in message_group.chat.id:
+                    message_group.chat.send_message(str(datetime.now()))
+                # requests.post("")
+    except Exception as e:
+        print(e)
     finally:
         # Release lock anyway, safekeeping
         release_semaphore(client_id)
@@ -295,6 +298,7 @@ def get_client_info(client_id):
     }
     """
     if client_id not in drivers:
+        print("Cliente não está nos drivers: " + str(client_id))
         return None
 
     driver_status = drivers[client_id].get_status()
@@ -364,6 +368,8 @@ def create_static_profile_path(client_id):
     @param client_id: ID of client user
     @return string profile path
     """
+
+    print("criando profile para cliente: " + str(client_id))
     profile_path = os.path.join(STATIC_FILES_PATH, str(client_id))
     if not os.path.exists(profile_path):
         os.makedirs(profile_path)
@@ -441,7 +447,7 @@ def before_request():
             and g.driver_status != WhatsAPIDriverStatus.LoggedIn):
             drivers[g.client_id] = init_client(g.client_id)
             g.driver_status = g.driver.get_status()
-        
+            print("reabrindo driver para cliente: " + str(g.client_id))
         init_timer(g.client_id)
 
 
@@ -514,6 +520,7 @@ def get_screen():
     image_path = STATIC_FILES_PATH + img_title
 
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        print(drivers[g.client_id].get_status())
         g.driver.get_qr(image_path)
         return send_file(image_path, mimetype='image/png')
     else:
@@ -524,6 +531,7 @@ def get_screen():
 def get_qr():
     """Get qr as a json string"""
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        print(drivers[g.client_id].get_status())
         qr = g.driver.get_qr_plain()
         return jsonify({'qr': qr})
     else:
@@ -534,6 +542,7 @@ def get_qr():
 def get_qr_b64():
     """Get qr as a json string"""
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
+        print(drivers[g.client_id].get_status())
         qr = g.driver.get_qr_base64()
         return jsonify({'qr': qr})
     else:
@@ -660,13 +669,14 @@ def run_clients():
     if not clients:
         return jsonify({'Error': 'no clients provided'})
 
-    result = {}
+    result = []
     for client_id in clients.split(','):
         if client_id not in drivers:
             init_client(client_id)
             init_timer(client_id)
 
-        result[client_id] = get_client_info(client_id)
+        result.append(get_client_info(client_id))
+        #result[client_id] = get_client_info(client_id)
 
     return jsonify(result)
 
@@ -709,3 +719,4 @@ def hello():
 if __name__ == '__main__':
     # todo: load presaved active client ids
     app.run()
+
