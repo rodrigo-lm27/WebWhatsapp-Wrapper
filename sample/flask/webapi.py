@@ -128,7 +128,7 @@ semaphores = dict()
 # API key needed for auth with this API, change as per usage
 API_KEY = '5ohsRCA8os7xW7arVagm3O861lMZwFfl'
 # File type allowed to be sent or received
-ALLOWED_EXTENSIONS = ('avi', 'mp4', 'png', 'jpg', 'jpeg', 'gif', 'mp3', 'doc', 'docx', 'pdf')
+ALLOWED_EXTENSIONS = ('avi', 'mp4', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'mp3', 'doc', 'docx', 'pdf')
 # Path to temporarily store static files like images
 STATIC_FILES_PATH = 'static/'
 
