@@ -276,7 +276,10 @@ class WhatsAPIDriver(object):
         )
 
     def get_qr_plain(self):
-        return self.driver.find_element_by_css_selector(self._SELECTORS['qrCodePlain']).get_attribute("data-ref")
+        print("iniciei qr metodo")
+        qr = self.driver.find_element_by_css_selector(self._SELECTORS['qrCodePlain']).get_attribute("data-ref")
+        print(qr)
+        return qr
 
     def get_qr(self, filename=None):
         """Get pairing QR code from client"""
@@ -557,8 +560,8 @@ class WhatsAPIDriver(object):
         :param path: file path
         :return: returns the converted string and formatted for the send media function send_media
         """
-
-        mime = magic.Magic(mime=True)
+        pathmagic = "C:\\GnuWin32\\share\\misc\\magic"
+        mime = magic.Magic(mime=True, magic_file=pathmagic)
         content_type = mime.from_file(path)
         archive = ''
         with open(path, "rb") as image_file:

@@ -35,12 +35,14 @@ import sys
 import time
 import threading
 import werkzeug
+from magic import magic
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE_DIR)
 
 from flask import Flask, send_file, request, abort, g, jsonify
 from datetime import datetime
+from base64 import b64decode, b64encode
 from flask.json import JSONEncoder
 from functools import wraps
 from logging.handlers import TimedRotatingFileHandler
@@ -244,7 +246,7 @@ def init_timer(client_id):
         return
     # Create a timer to call check_new_message function after every 2 seconds.
     # client_id param is needed to be passed to check_new_message
-    timers[client_id] = RepeatedTimer(5, check_new_messages, client_id)
+    timers[client_id] = RepeatedTimer(2, check_new_messages, client_id)
 
 
 def check_new_messages(client_id):
@@ -252,7 +254,7 @@ def check_new_messages(client_id):
 
     @param client_id: ID of client user
     """
-    print("verificand novas mensagens para: " + str(client_id))
+    # print("verificand novas mensagens para: " + str(client_id))
     # Return if driver is not defined or if whatsapp is not logged in.
     # Stop the timer as well
     if client_id not in drivers or not drivers[client_id] or not drivers[client_id].is_logged_in():
@@ -275,8 +277,10 @@ def check_new_messages(client_id):
         # If we have new messages, do something with it
         if res:
             print(res)
+            requests.post("http://localhost:80/DttAdm/novamsg", json={'id': '1'})
             for message_group in res:
                 if "5521996063947@c.us" in message_group.chat.id:
+                    message_group.chat.name
                     message_group.chat.send_message(str(datetime.now()))
                 # requests.post("")
     except Exception as e:
@@ -519,34 +523,49 @@ def get_screen():
     img_title = 'screen_' + g.client_id + '.png'
     image_path = STATIC_FILES_PATH + img_title
 
+    g.driver.get_qr(image_path)
+    return send_file(image_path, mimetype='image/png')
+    '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
         print(drivers[g.client_id].get_status())
         g.driver.get_qr(image_path)
         return send_file(image_path, mimetype='image/png')
     else:
-        abort(jsonify({"Error": "Client already loggedIn"}))
+        abort(400,"Client already loggedIn")'''
 
 
 @app.route('/screen/qr', methods=['GET'])
 def get_qr():
     """Get qr as a json string"""
+    if g.driver_status != WhatsAPIDriverStatus.LoggedIn:
+        try:
+            qr = g.driver.get_qr_plain()
+            return jsonify({'qr': qr})
+        except Exception as err:
+            return jsonify({"msg":"já logado"})
+
+    '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
         print(drivers[g.client_id].get_status())
+        print("buscando metodo qr")
         qr = g.driver.get_qr_plain()
         return jsonify({'qr': qr})
     else:
-        abort(jsonify({"Error": "Client already loggedIn"}))
+        abort(400,"Client already loggedIn")'''
 
 
 @app.route('/screen/b64', methods=['GET'])
 def get_qr_b64():
     """Get qr as a json string"""
+    qr = g.driver.get_qr_base64()
+    return jsonify({'qr': qr})
+    '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
         print(drivers[g.client_id].get_status())
         qr = g.driver.get_qr_base64()
         return jsonify({'qr': qr})
     else:
-        abort(jsonify({"Error": "Client already loggedIn"}))
+        abort(400,"Client already loggedIn")'''
 
 
 
@@ -624,7 +643,7 @@ def send_message(chat_id):
     if res:
         return jsonify(res)
     else:
-        return False
+        abort(400,'Erro ao enviar mensagen!')
 
 
 @app.route('/messages/<msg_id>/download', methods=['GET'])
@@ -640,7 +659,16 @@ def download_message_media(msg_id):
     filename = message.save_media(profile_path, True)
 
     if os.path.exists(filename):
-        return send_file(filename, mimetype=message.mime)
+        pathmagic = "C:\\GnuWin32\\share\\misc\\magic"
+        mime = magic.Magic(mime=True, magic_file=pathmagic)
+        content_type = mime.from_file(filename)
+        archive = ''
+        with open(filename, "rb") as image_file:
+            archive = b64encode(image_file.read())
+            archive = archive.decode('utf-8')
+            msg = 'data:' + content_type + ';base64,' + archive
+            return jsonify({"b64": msg})
+        # return send_file(filename, mimetype=message.mime)
 
     abort(404)
 
@@ -718,5 +746,5 @@ def hello():
 
 if __name__ == '__main__':
     # todo: load presaved active client ids
-    app.run()
+    app.run(debug=True)
 
