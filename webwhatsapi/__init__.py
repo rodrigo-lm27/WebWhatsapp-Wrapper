@@ -409,6 +409,9 @@ class WhatsAPIDriver(object):
         :return: List of messages in chat
         :rtype: list[Message]
         """
+        if not self.wapi_functions.areAllMessagesLoaded(chat.id):
+            print("carregando mensagens anteriores")
+            self.wapi_functions.loadEarlierMessages(chat.id)
         message_objs = self.wapi_functions.getAllMessagesInChat(chat.id, include_me, include_notifications)
 
         messages = []
