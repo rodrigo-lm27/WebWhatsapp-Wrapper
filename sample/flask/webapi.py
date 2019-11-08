@@ -662,13 +662,14 @@ def download_message_media(msg_id):
         pathmagic = "C:\\GnuWin32\\share\\misc\\magic"
         mime = magic.Magic(mime=True, magic_file=pathmagic)
         content_type = mime.from_file(filename)
-        archive = ''
-        with open(filename, "rb") as image_file:
-            archive = b64encode(image_file.read())
-            archive = archive.decode('utf-8')
-            msg = 'data:' + content_type + ';base64,' + archive
-            return jsonify({"b64": msg})
-        # return send_file(filename, mimetype=message.mime)
+        if not filename or not allowed_file(content_type):
+            archive = ''
+            with open(filename, "rb") as image_file:
+                archive = b64encode(image_file.read())
+                archive = archive.decode('utf-8')
+                msg = 'data:' + content_type + ';base64,' + archive
+                return jsonify({"b64": msg})
+            # return send_file(filename, mimetype=message.mime)
 
     abort(404)
 
