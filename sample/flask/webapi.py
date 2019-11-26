@@ -270,8 +270,8 @@ def check_new_messages(client_id):
         # Get all unread messages
         res = drivers[client_id].get_unread()
         # Mark all of them as seen
-        for message_group in res:
-            message_group.chat.send_seen()
+        # for message_group in res:
+            # message_group.chat.send_seen()
         # Release thread lock
         release_semaphore(client_id)
         # If we have new messages, do something with it
@@ -373,9 +373,10 @@ def create_static_profile_path(client_id):
     @return string profile path
     """
 
-    print("criando profile para cliente: " + str(client_id))
+
     profile_path = os.path.join(STATIC_FILES_PATH, str(client_id))
     if not os.path.exists(profile_path):
+        print("criando profile para cliente: " + str(client_id))
         os.makedirs(profile_path)
     return profile_path
 
@@ -486,6 +487,7 @@ def on_bad_internal_server_error(e):
 
 # ---------------------------- Client -----------------------------------------
 @app.route('/client', methods=['GET'])
+@login_required
 def status_client():
     """Create a new client driver. The driver is automatically created in
     before_request function."""
@@ -559,6 +561,7 @@ def get_qr_b64():
     """Get qr as a json string"""
     qr = g.driver.get_qr_base64()
     return jsonify({'qr': qr})
+
     '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
         print(drivers[g.client_id].get_status())
@@ -606,13 +609,10 @@ def get_chats():
 def get_messages(chat_id):
     """Return all of the chat messages"""
 
-    mark_seen = request.args.get('mark_seen', True)
+    mark_seen = request.args.get('mark_seen', False)
 
     chat = g.driver.get_chat_from_id(chat_id)
-    msgs = list(g.driver.get_all_messages_in_chat(chat))
-
-    for msg in msgs:
-        print(msg.id)
+    msgs = list(g.driver.get_all_messages_in_chat(chat, True, False, False))
 
     if mark_seen:
         for msg in msgs:
@@ -653,7 +653,7 @@ def download_message_media(msg_id):
     message = g.driver.get_message_by_id(msg_id)
 
     if not message or not message.mime:
-        abort(404)
+        return ('', 204)
 
     profile_path = create_static_profile_path(g.client_id)
     filename = message.save_media(profile_path, True)

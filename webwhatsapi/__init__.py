@@ -399,7 +399,7 @@ class WhatsAPIDriver(object):
 
     # get_unread_messages_in_chat()
 
-    def get_all_messages_in_chat(self, chat, include_me=True, include_notifications=False):
+    def get_all_messages_in_chat(self, chat, include_me=True, include_notifications=False, load_earlierMessages=False):
         """
         Fetches messages in chat
         :param include_me: Include user's messages
@@ -409,7 +409,9 @@ class WhatsAPIDriver(object):
         :return: List of messages in chat
         :rtype: list[Message]
         """
-        if not self.wapi_functions.areAllMessagesLoaded(chat.id):
+        # if not self.wapi_functions.areAllMessagesLoaded(chat.id):
+        # if not self.wapi_functions.areAllMessagesLoaded(chat.id):
+        if load_earlierMessages:
             print("carregando mensagens anteriores")
             self.wapi_functions.loadEarlierMessages(chat.id)
         message_objs = self.wapi_functions.getAllMessagesInChat(chat.id, include_me, include_notifications)

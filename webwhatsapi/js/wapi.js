@@ -20,7 +20,7 @@ window.WAPI.autoDiscoverModules = function() {
             let neededObjects = [
                 { id: "Store", conditions: (mod) => (mod.Chat && mod.Msg) ? mod : null },
                 { id: "MediaCollection", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.processFiles !== undefined) ? mod.default : null },
-                { id: "ChatClass", conditions: (mod) => (mod.default && mod.default.prototype && mod.default.prototype.Collection !== undefined && mod.default.prototype.Collection === "Chat") ? mod : null },
+
                 { id: "MediaProcess", conditions: (mod) => (mod.BLOB) ? mod : null },
                 { id: "Wap", conditions: (mod) => (mod.createGroup) ? mod : null },
                 { id: "ServiceWorker", conditions: (mod) => (mod.default && mod.default.killServiceWorker) ? mod : null },
@@ -71,7 +71,7 @@ window.WAPI.autoDiscoverModules = function() {
                                 window.Store[needObj.id] = needObj.foundedModule;
                             }
                         });
-                        window.Store.ChatClass.default.prototype.sendMessage = function (e) {
+                        window.Store.sendMessage = function (e) {
                             return window.Store.SendTextMsgToChat(this, ...arguments);
                         }
                         return window.Store;
@@ -303,6 +303,7 @@ window.WAPI.getAllGroups = function (done) {
 window.WAPI.getChat = function (id, done) {
     id = typeof id == "string" ? id : id._serialized;
     const found = window.Store.Chat.get(id);
+    found.sendMessage = (found.sendMessage) ? found.sendMessage : function () { return window.Store.sendMessage.apply(this, arguments); };
     if (done !== undefined) done(found);
     return found;
 }
