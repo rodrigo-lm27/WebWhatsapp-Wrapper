@@ -42,7 +42,7 @@ from magic import magic
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE_DIR)
 
-from flask import Flask, send_file, request, abort, g, jsonify
+from flask import Flask, send_file, request, abort, g, jsonify, session
 from datetime import datetime
 from base64 import b64decode, b64encode
 from flask.json import JSONEncoder
@@ -218,8 +218,6 @@ def init_client(client_id):
     if client_id not in drivers:
         print("iniciando cliente para "+str(client_id))
         drivers[client_id] = init_driver(client_id)
-        g.driver = drivers[client_id]
-    g.driver_status = g.driver.get_status()
     return drivers[client_id]
 
 
@@ -263,7 +261,7 @@ def check_new_messages(client_id):
 
     @param client_id: ID of client user
     """
-    # print("verificand novas mensagens para: " + str(client_id))
+    print("verificand novas mensagens para: " + str(client_id))
     # Return if driver is not defined or if whatsapp is not logged in.
     # Stop the timer as well
     if client_id not in drivers or not drivers[client_id] or not drivers[client_id].is_logged_in():
@@ -271,8 +269,8 @@ def check_new_messages(client_id):
         return
 
     # Acquire a lock on thread
-    # if not acquire_semaphore(client_id, True):
-    #   return
+    if not acquire_semaphore(client_id, True):
+        return
 
     try:
 
@@ -282,23 +280,23 @@ def check_new_messages(client_id):
         # for message_group in res:
             # message_group.chat.send_seen()
         # Release thread lock
-        # release_semaphore(client_id)
+        release_semaphore(client_id)
         # If we have new messages, do something with it
-        ids = []
         if res:
             print(res)
-
+            """
             requests.post("http://localhost:80/DttAdm/novamsg", json={'id': '1'})
             for message_group in res:
-                if message_group.chat.id not in ids:
-                    ids.append(message_group.chat.id)
-                    messages = message_group.chat.get_unread_messages()
-                    if not "g.us" in message_group.chat.id:
-                        message_group.chat.send_message("Um momento já irei responder...")
-                    for Message in messages:
-                        print(Message.content)
-                        if "!oi" in Message.content:
-                            message_group.chat.send_message("OIIII <3")
+                if " " in message_group.chat.id:
+                    message_group.chat.name
+                    message_group.chat.send_message(str(datetime.now()))
+                messages = message_group.chat.get_unread_messages()
+                if not "g.us" in message_group.chat.id:
+                    message_group.chat.send_message("Um momento já irei responder...")
+                for Message in messages:
+                    print(Message.content)
+                    if "!oi" in Message.content:
+                        message_group.chat.send_message("OIIII <3")"""
     except Exception as e:
         print(e)
     finally:
@@ -334,7 +332,7 @@ def get_client_info(client_id):
         "client": client_id,
         "is_alive": is_alive,
         "is_logged_in": is_logged_in,
-        # "is_timer": bool(timers[client_id]) and timers[client_id].is_running
+        "is_timer": bool(timers[client_id]) and timers[client_id].is_running
     }
 
 
@@ -422,6 +420,11 @@ def release_semaphore(client_id):
             semaphores[client_id].release()
 
 
+def status_driver_w(client_id):
+    g.driver_status = g.driver.get_status()
+    session[client_id] = g.driver_status
+
+
 @app.before_request
 def before_request():
     """This runs before every API request. The function take cares of creating
@@ -438,11 +441,13 @@ def before_request():
         abort(404)
 
     if logger == None:
+        print("criando logger")
         create_logger()
     logger.info("API call " + request.method + " " + request.url)
 
     auth_key = request.headers.get('auth-key')
     g.client_id = request.headers.get('client_id')
+    # session[g.client_id] = WhatsAPIDriverStatus.Unknown
     rule_parent = request.url_rule.rule.split('/')[1]
     
     if API_KEY and auth_key != API_KEY:
@@ -452,29 +457,46 @@ def before_request():
     if not g.client_id and rule_parent != 'admin':
         abort(400, 'client ID is mandatory')
 
-
+    print("semaphore para a trhead :", g.client_id)
+    acquire_semaphore(g.client_id)
 
     # Create a driver object if not exist for client requests.
     if rule_parent != 'admin':
         if g.client_id not in drivers:
-            #threading.Thread(target=init_client(g.client_id)).start()
-
+            print("client nao esta nos drivers, criando um driver para" + g.client_id)
             drivers[g.client_id] = init_client(g.client_id)
+        print("iniciando g.driver")
 
         g.driver = drivers[g.client_id]
-        acquire_semaphore(g.client_id)
-        # g.driver_status = WhatsAPIDriverStatus.Unknown
+        print("valor de g.driver novo", g.driver)
+        print("iniciando g.driver_status")
+        if session.get(g.client_id) is None:
+            threading.Thread(target=status_driver_w(g.client_id)).start()
+        else:
+            g.driver_status = session[g.client_id]
+
+        print("valor atual de session gclient", session[g.client_id])
+
         """
         if g.driver is not None:
-            g.driver_status = g.driver.get_status()"""
+            print("g.driver esta sem status")
+            g.driver_status = g.driver.get_status()
         """
         # If driver status is unkown, means driver has closed somehow, reopen it
-        if (g.driver_status != WhatsAPIDriverStatus.NotLoggedIn
+        threading.Thread(target=status_reopen_driver()).start()
+        print("iniciando timer para:" +g.client_id)
+        if g.driver_status == WhatsAPIDriverStatus.LoggedIn:
+            init_timer(g.client_id)
+
+
+def status_reopen_driver():
+    if (g.driver_status != WhatsAPIDriverStatus.NotLoggedIn
             and g.driver_status != WhatsAPIDriverStatus.LoggedIn):
-            drivers[g.client_id] = init_client(g.client_id)
-            g.driver_status = g.driver.get_status()
-            print("reabrindo driver para cliente: " + str(g.client_id))"""
-        init_timer(g.client_id)
+        print("driver status desconhecido, ou fechado, tentando reabrir")
+        print("iniciando client:" + g.client_id)
+        drivers[g.client_id] = init_client(g.client_id)
+        print("g.driverstatus = g.driver.getstatus")
+        g.driver_status = g.driver.get_status()
 
 
 @app.after_request
@@ -529,7 +551,7 @@ def create_client():
 
 
 @app.route('/client', methods=['DELETE'])
-def delete_client_route():
+def delete_client():
     """Delete all objects related to client"""
     preserve_cache = request.args.get('preserve_cache', False)
     delete_client(g.client_id, preserve_cache)
@@ -740,37 +762,26 @@ def run_clients():
 
 @app.route('/admin/<client_id>/clients', methods=['DELETE'])
 def kill_clients(client_id):
-    print(client_id)
-    preserve_cache = True
-    try:
-        delete_client(client_id, preserve_cache)
-        return jsonify({'Success': True})
-    except Exception as e:
-        return jsonify({'Error': e})
     """Force kill driver and other objects for a perticular clien"""
-    """
-    client = client_id
+    clients = client_id
     kill_dead = request.args.get('kill_dead', default=False)
     kill_dead = kill_dead and kill_dead in ['true', '1']
 
-    if not kill_dead and not client:
-        return jsonify({'Error': 'no client provided'})
+    if not kill_dead and not clients:
+        return jsonify({'Error': 'no clients provided'})
 
-    # for client in list(drivers.keys()):
-    if kill_dead and not drivers[client].is_logged_in():
-        drivers.pop(client).quit()
-        try:
-            timers[client].stop()
-            timers[client] = None
-            release_semaphore(client)
-            semaphores[client] = None
-            profile_path = CHROME_CACHE_PATH + str(client)
-            if os.path.exists(profile_path):
-                shutil.rmtree(profile_path, ignore_errors=True)
-        except:
-            pass
+    for client in list(drivers.keys()):
+        if kill_dead and not drivers[client].is_logged_in() or client in clients:
+            drivers.pop(client).quit()
+            try:
+                timers[client].stop()
+                timers[client] = None
+                release_semaphore(client)
+                semaphores[client] = None
+            except:
+                pass
 
-    return get_active_clients()"""
+    return get_active_clients()
 
 
 @app.route('/admin/exception', methods=['GET'])
@@ -792,5 +803,6 @@ def hello():
 
 if __name__ == '__main__':
     # todo: load presaved active client ids
+    app.secret_key = '3123@!#123124123!@#'
     app.run(debug=True)
 
