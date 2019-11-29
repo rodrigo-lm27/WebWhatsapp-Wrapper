@@ -59,12 +59,13 @@ from webwhatsapi.objects.whatsapp_object import WhatsappObject
 ###########################
 '''
 
+
 class RepeatedTimer(object):
     '''
     A generic class that creates a timer of specified interval and calls the
     given function after that interval
     '''
-    
+
     def __init__(self, interval, function, *args, **kwargs):
         ''' Starts a timer of given interval
         @param self:
@@ -73,11 +74,11 @@ class RepeatedTimer(object):
         @param *args: args to pass to the called functions
         @param *kwargs: args to pass to the called functions
         '''
-        self._timer     = None
-        self.interval   = interval
-        self.function   = function
-        self.args       = args
-        self.kwargs     = kwargs
+        self._timer = None
+        self.interval = interval
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
         self.is_running = False
         self.start()
 
@@ -88,7 +89,7 @@ class RepeatedTimer(object):
 
     def start(self):
         """Creates a timer and start it"""
-        
+
         if not self.is_running:
             self._timer = threading.Timer(self.interval, self._run)
             self._timer.start()
@@ -98,6 +99,7 @@ class RepeatedTimer(object):
         """Stop the timer"""
         self._timer.cancel()
         self.is_running = False
+
 
 class WhatsAPIJSONEncoder(JSONEncoder):
     def default(self, obj):
@@ -142,12 +144,12 @@ CHROME_CACHE_PATH = BASE_DIR + '/sample/flask/chrome_cache/'
 CHROME_DISABLE_GPU = True
 CHROME_WINDOW_SIZE = "910,512"
 
-
 '''
 ##############################
 ##### FUNCTION DEFINITION ####
 ##############################
 '''
+
 
 def login_required(f):
     @wraps(f)
@@ -156,6 +158,7 @@ def login_required(f):
         if g.driver_status != WhatsAPIDriverStatus.LoggedIn:
             return jsonify({"error": "client is not logged in"})
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -188,7 +191,7 @@ def init_driver(client_id):
     profile_path = CHROME_CACHE_PATH + str(client_id)
     if not os.path.exists(profile_path):
         os.makedirs(profile_path)
-    
+
     # Options to customize chrome window
     chrome_options = [
         'window-size=' + CHROME_WINDOW_SIZE,
@@ -198,12 +201,12 @@ def init_driver(client_id):
         chrome_options.append('--headless')
     if CHROME_DISABLE_GPU:
         chrome_options.append('--disable-gpu')
-    
+
     # Create a whatsapidriver object
     d = WhatsAPIDriver(
-        username=client_id, 
-        profile=profile_path, 
-        client='chrome', 
+        username=client_id,
+        profile=profile_path,
+        client='chrome',
         chrome_options=chrome_options
     )
     return d
@@ -216,7 +219,7 @@ def init_client(client_id):
     @return whebwhatsapi object
     """
     if client_id not in drivers:
-        print("iniciando cliente para "+str(client_id))
+        print("iniciando cliente para " + str(client_id))
         drivers[client_id] = init_driver(client_id)
     return drivers[client_id]
 
@@ -261,13 +264,13 @@ def check_new_messages(client_id):
 
     @param client_id: ID of client user
     """
-    print("verificand novas mensagens para: " + str(client_id))
+
     # Return if driver is not defined or if whatsapp is not logged in.
     # Stop the timer as well
-    if client_id not in drivers or not drivers[client_id] or not drivers[client_id].is_logged_in():
+    if client_id not in drivers or not drivers[client_id] or not drivers[client_id].wait_for_login():
         timers[client_id].stop()
         return
-
+    print("verificand novas mensagens para: " + str(client_id))
     # Acquire a lock on thread
     if not acquire_semaphore(client_id, True):
         return
@@ -278,7 +281,7 @@ def check_new_messages(client_id):
         res = drivers[client_id].get_unread()
         # Mark all of them as seen
         # for message_group in res:
-            # message_group.chat.send_seen()
+        # message_group.chat.send_seen()
         # Release thread lock
         release_semaphore(client_id)
         # If we have new messages, do something with it
@@ -318,21 +321,24 @@ def get_client_info(client_id):
     if client_id not in drivers:
         print("Cliente não está nos drivers: " + str(client_id))
         return None
-
+    """if session.get(client_id) is None:
+        threading.Thread(target=status_driver_w(client_id)).start()
+    else:
+        driver_status = session[client_id]"""
     driver_status = drivers[client_id].get_status()
     is_alive = False
     is_logged_in = False
     if (driver_status == WhatsAPIDriverStatus.NotLoggedIn
-        or driver_status == WhatsAPIDriverStatus.LoggedIn):
+            or driver_status == WhatsAPIDriverStatus.LoggedIn):
         is_alive = True
     if driver_status == WhatsAPIDriverStatus.LoggedIn:
         is_logged_in = True
-    
+
     return {
         "client": client_id,
         "is_alive": is_alive,
         "is_logged_in": is_logged_in,
-        "is_timer": bool(timers[client_id]) and timers[client_id].is_running
+        # "is_timer": bool(timers[client_id]) and timers[client_id].is_running
     }
 
 
@@ -387,7 +393,6 @@ def create_static_profile_path(client_id):
     @return string profile path
     """
 
-
     profile_path = os.path.join(STATIC_FILES_PATH, str(client_id))
     if not os.path.exists(profile_path):
         print("criando profile para cliente: " + str(client_id))
@@ -436,7 +441,7 @@ def before_request():
     client_id: to identify for which client the request is to be run
     """
     global logger
-    
+
     if not request.url_rule:
         abort(404)
 
@@ -449,7 +454,7 @@ def before_request():
     g.client_id = request.headers.get('client_id')
     # session[g.client_id] = WhatsAPIDriverStatus.Unknown
     rule_parent = request.url_rule.rule.split('/')[1]
-    
+
     if API_KEY and auth_key != API_KEY:
         abort(401, 'you must send valid auth-key')
         raise Exception()
@@ -463,7 +468,7 @@ def before_request():
     # Create a driver object if not exist for client requests.
     if rule_parent != 'admin':
         if g.client_id not in drivers:
-            print("client nao esta nos drivers, criando um driver para" + g.client_id)
+            print("client nao esta nos drivers, criando um driver para", g.client_id)
             drivers[g.client_id] = init_client(g.client_id)
         print("iniciando g.driver")
 
@@ -484,8 +489,9 @@ def before_request():
         """
         # If driver status is unkown, means driver has closed somehow, reopen it
         threading.Thread(target=status_reopen_driver()).start()
-        print("iniciando timer para:" +g.client_id)
+
         if g.driver_status == WhatsAPIDriverStatus.LoggedIn:
+            print("iniciando timer para:" + g.client_id)
             init_timer(g.client_id)
 
 
@@ -527,6 +533,7 @@ def on_bad_internal_server_error(e):
 ##### API ROUTES ####
 #####################
 '''
+
 
 # ---------------------------- Client -----------------------------------------
 @app.route('/client', methods=['GET'])
@@ -590,9 +597,9 @@ def get_qr():
             return jsonify({"msg":"já logado"})"""
     try:
         qr = g.driver.get_qr_plain()
-        return jsonify({'qr':qr})
+        return jsonify({'qr': qr})
     except Exception as err:
-        return jsonify({'msg':'ja logado'})
+        return jsonify({'msg': 'ja logado'})
 
     '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
@@ -611,7 +618,7 @@ def get_qr_b64():
         qr = g.driver.get_qr_base64()
         return jsonify({'qr': qr})
     except Exception as err:
-        return jsonify({'msg':'Já logado'})
+        return jsonify({'msg': 'Já logado'})
     '''
     if drivers[g.client_id].get_status() == WhatsAPIDriverStatus.NotLoggedIn:
         print(drivers[g.client_id].get_status())
@@ -619,8 +626,6 @@ def get_qr_b64():
         return jsonify({'qr': qr})
     else:
         abort(400,"Client already loggedIn")'''
-
-
 
 
 @app.route('/messages/unread', methods=['GET'])
@@ -670,7 +675,7 @@ def get_messages(chat_id):
                 msg.chat.send_seen()
             except:
                 pass
-    
+
     return jsonify(msgs)
 
 
@@ -693,7 +698,7 @@ def send_message(chat_id):
     if res:
         return jsonify(res)
     else:
-        abort(400,'Erro ao enviar mensagen!')
+        abort(400, 'Erro ao enviar mensagen!')
 
 
 @app.route('/messages/<msg_id>/download', methods=['GET'])
@@ -735,7 +740,7 @@ def get_active_clients():
         return jsonify([])
 
     result = []
-    #result = {client: get_client_info(client) for client in drivers}
+    # result = {client: get_client_info(client) for client in drivers}
     for client in drivers:
         result.append(get_client_info(client))
     return jsonify(result)
@@ -755,7 +760,7 @@ def run_clients():
             init_timer(client_id)
 
         result.append(get_client_info(client_id))
-        #result[client_id] = get_client_info(client_id)
+        # result[client_id] = get_client_info(client_id)
 
     return jsonify(result)
 
@@ -805,4 +810,3 @@ if __name__ == '__main__':
     # todo: load presaved active client ids
     app.secret_key = '3123@!#123124123!@#'
     app.run(debug=True)
-

@@ -15,5 +15,6 @@ docs/_build
 .eggs
 *.sublime-*
 sample/flask/chromedriver.exe
-sample/flask/log*.txt
+sample/flask/log*
 sample/flask/static/*
+sample/flask/log.txt
