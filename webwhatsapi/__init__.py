@@ -24,6 +24,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from werkzeug.exceptions import abort
 
 from .objects.chat import Chat, UserChat, factory_chat
 from .objects.contact import Contact
@@ -277,6 +278,8 @@ class WhatsAPIDriver(object):
 
     def get_qr_plain(self):
         print("iniciei qr metodo")
+        # self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+        # self.driver.find_element_by_id("pane-side").
         qr = self.driver.find_element_by_css_selector(self._SELECTORS['qrCodePlain']).get_attribute("data-ref")
         print(qr)
         return qr
@@ -285,7 +288,9 @@ class WhatsAPIDriver(object):
         """Get pairing QR code from client"""
         if "Click to reload QR code" in self.driver.page_source or "Clique para carregar o código QR novamente" in self.driver.page_source:
             self.reload_qr()
+
         qr = self.driver.find_element_by_css_selector(self._SELECTORS['qrCode'])
+
         if filename is None:
             fd, fn_png = tempfile.mkstemp(prefix=self.username, suffix='.png')
         else:
@@ -295,10 +300,17 @@ class WhatsAPIDriver(object):
         qr.screenshot(fn_png)
         os.close(fd)
         return fn_png
+        return fn_png
 
     def get_qr_base64(self):
         if "Click to reload QR code" in self.driver.page_source or "Clique para carregar o código QR novamente" in self.driver.page_source:
             self.reload_qr()
+        """if self.driver.execute_script(
+                "if (document.querySelector('qrCode') !== null) { return true } else { return false }"):
+            qr = self.driver.find_element_by_css_selector(self._SELECTORS['qrCode'])
+        else:
+            # abort(400, "Client already loggedIn")
+            abort(204, "Cliente já logado")"""
         qr = self.driver.find_element_by_css_selector(self._SELECTORS['qrCode'])
 
         return qr.screenshot_as_base64
@@ -346,7 +358,7 @@ class WhatsAPIDriver(object):
         """
         return self.wapi_functions.getAllChatIds()
 
-    def get_unread(self, include_me=False, include_notifications=False, use_unread_count=False):
+    def get_unread(self, include_me=False, include_notifications=False, use_unread_count=True):
         """
         Fetches unread messages
         :param include_me: Include user's messages
@@ -512,19 +524,24 @@ class WhatsAPIDriver(object):
         :rtype: WhatsAPIDriverStatus
         """
         if self.driver is None:
+            print("driver não conectado")
             return WhatsAPIDriverStatus.NotConnected
         if self.driver.session_id is None:
+            print("driver não conectado, fora de sessão")
             return WhatsAPIDriverStatus.NotConnected
         try:
             self.driver.find_element_by_css_selector(self._SELECTORS['mainPage'])
+            print("driver logado")
             return WhatsAPIDriverStatus.LoggedIn
         except NoSuchElementException:
             pass
         try:
             self.driver.find_element_by_css_selector(self._SELECTORS['qrCode'])
+            print("driver não logado")
             return WhatsAPIDriverStatus.NotLoggedIn
         except NoSuchElementException:
             pass
+        print('driver desconhecido')
         return WhatsAPIDriverStatus.Unknown
 
     def contact_get_common_groups(self, contact_id):
@@ -585,7 +602,7 @@ class WhatsAPIDriver(object):
         """
         imgBase64 = self.convert_to_base64(path)
         filename = os.path.split(path)[-1]
-        return self.wapi_functions.sendImage(imgBase64, chatid, filename, caption)
+        return self.wapi_functions.sendImage(imgBase64, chatid, filename)
 
 
 

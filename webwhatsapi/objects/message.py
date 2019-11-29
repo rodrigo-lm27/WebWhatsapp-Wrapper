@@ -60,10 +60,10 @@ class Message(WhatsappObject):
         self.timestamp = datetime.fromtimestamp(js_obj["timestamp"])
         self.chat_id = js_obj['chatId']
 
-        if "content" in js_obj:
+        if "content" in js_obj and js_obj["content"] is not None:
             self.content = js_obj["content"]
             self.safe_content = safe_str(self.content[0:25]) + '...'
-        elif self.type == 'revoked':
+        else:
             self.content = ''
             self.safe_content = '...'
 
